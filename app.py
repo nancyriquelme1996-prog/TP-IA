@@ -68,7 +68,7 @@ barrio = st.sidebar.text_input("4. ¿Algún barrio o zona específica? (Opcional
 excluir = st.sidebar.text_input("5. ¿Querés excluir alguna zona? (Opcional)")
 
 # 4. Botón de Búsqueda y Lógica
-```python
+
 if st.sidebar.button("Buscar Propiedades 🚀"):
     url_n8n = "https://nancyriquelme.app.n8n.cloud/webhook-test/buscar-propiedades"
 
@@ -177,4 +177,4 @@ if st.sidebar.button("Buscar Propiedades 🚀"):
 
     except (ValueError, TypeError) as error:
         st.error(f"No se pudo interpretar la respuesta de n8n: {error}")
-```
+
