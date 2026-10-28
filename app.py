@@ -186,7 +186,7 @@ except requests.exceptions.RequestException as error:
     st.error(f"No se pudo conectar con n8n: {error}")
 except (ValueError, TypeError) as error:
     st.error(f"No se pudo interpretar la respuesta de n8n: {error}")
-```
+
 
   else:
     st.warning(
