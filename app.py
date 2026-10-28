@@ -68,8 +68,8 @@ barrio = st.sidebar.text_input("4. ¿Algún barrio o zona específica? (Opcional
 excluir = st.sidebar.text_input("5. ¿Querés excluir alguna zona? (Opcional)")
 
 # 4. Botón de Búsqueda y Lógica
+```python
 # 4. Botón de Búsqueda y Lógica
-
 if st.sidebar.button("Buscar Propiedades 🚀"):
     url_n8n = "https://nancyriquelme.app.n8n.cloud/webhook-test/buscar-propiedades"
 
@@ -81,114 +81,108 @@ if st.sidebar.button("Buscar Propiedades 🚀"):
         "excluir": excluir,
     }
 
-try:
-    with st.spinner("Buscando propiedades con n8n..."):
-        respuesta = requests.post(
-            url_n8n,
-            json=parametros,
-            timeout=120,
+    try:
+        with st.spinner("Buscando propiedades con n8n..."):
+            respuesta = requests.post(
+                url_n8n,
+                json=parametros,
+                timeout=120,
+            )
+            respuesta.raise_for_status()
+            datos = respuesta.json()
+
+        if isinstance(datos, dict):
+            datos = datos.get("data", datos.get("items", []))
+
+        df_filtrado = pd.DataFrame(datos)
+
+        st.subheader(
+            f"✅ Propiedades que cumplen con las reglas: {len(df_filtrado)}"
         )
-        respuesta.raise_for_status()
-        datos = respuesta.json()
 
-    if isinstance(datos, dict):
-        datos = datos.get("data", datos.get("items", []))
+        if not df_filtrado.empty:
+            columnas = [
+                "property_type",
+                "price_aprox_usd",
+                "surface_total_in_m2",
+                "rooms",
+                "place_with_parent_names",
+            ]
 
-    df_filtrado = pd.DataFrame(datos)
+            columnas_disponibles = [
+                columna
+                for columna in columnas
+                if columna in df_filtrado.columns
+            ]
 
-    st.subheader(
-        f"✅ Propiedades que cumplen con las reglas: {len(df_filtrado)}"
-    )
+            columnas_orden = [
+                columna
+                for columna in [
+                    "surface_total_in_m2",
+                    "price_aprox_usd",
+                ]
+                if columna in df_filtrado.columns
+            ]
 
-    if not df_filtrado.empty:
-        columnas = [
-            "property_type",
-            "price_aprox_usd",
-            "surface_total_in_m2",
-            "rooms",
-            "place_with_parent_names",
-        ]
+            if columnas_orden:
+                df_filtrado = df_filtrado.sort_values(
+                    by=columnas_orden,
+                    ascending=False,
+                )
 
-        columnas_disponibles = [
-            columna for columna in columnas
-            if columna in df_filtrado.columns
-        ]
+            st.markdown("#### 🏆 Top 5 de opciones recomendadas:")
 
-        columnas_orden = [
-            columna for columna in [
+            vista_top5 = df_filtrado[columnas_disponibles].head(5).copy()
+
+            if "price_aprox_usd" in vista_top5.columns:
+                vista_top5["price_aprox_usd"] = vista_top5[
+                    "price_aprox_usd"
+                ].apply(
+                    lambda x: f"USD {float(x):,.0f}"
+                    if pd.notna(x)
+                    else "Sin precio"
+                )
+
+            st.dataframe(vista_top5, use_container_width=True)
+
+            if {
                 "surface_total_in_m2",
                 "price_aprox_usd",
-            ]
-            if columna in df_filtrado.columns
-        ]
+                "property_type",
+            }.issubset(df_filtrado.columns):
+                st.markdown(
+                    "#### 📊 Relación Superficie vs. Precio (Top 200)"
+                )
 
-        if columnas_orden:
-            df_filtrado = df_filtrado.sort_values(
-                by=columnas_orden,
-                ascending=False,
-            )
+                sns.set_theme(style="whitegrid")
+                fig, ax = plt.subplots(figsize=(10, 5))
 
-        st.markdown("#### 🏆 Top 5 de opciones recomendadas:")
-        vista_top5 = df_filtrado[columnas_disponibles].head(5).copy()
+                sns.scatterplot(
+                    data=df_filtrado.head(200),
+                    x="surface_total_in_m2",
+                    y="price_aprox_usd",
+                    hue="property_type",
+                    alpha=0.8,
+                    s=70,
+                    palette="viridis",
+                    ax=ax,
+                )
 
-        if "price_aprox_usd" in vista_top5.columns:
-            vista_top5["price_aprox_usd"] = vista_top5[
-                "price_aprox_usd"
-            ].apply(
-                lambda x: f"USD {float(x):,.0f}"
-                if pd.notna(x) else "Sin precio"
-            )
+                ax.set_xlabel("Superficie Total (m²)")
+                ax.set_ylabel("Precio (USD)")
+                ax.yaxis.set_major_formatter(
+                    ticker.FuncFormatter(lambda x, p: f"${x:,.0f}")
+                )
 
-        st.dataframe(vista_top5, use_container_width=True)
+                ax.legend(
+                    title="Tipo de Propiedad",
+                    bbox_to_anchor=(1.05, 1),
+                    loc="upper left",
+                )
 
-        if {
-            "surface_total_in_m2",
-            "price_aprox_usd",
-            "property_type",
-        }.issubset(df_filtrado.columns):
-            st.markdown(
-                "#### 📊 Relación Superficie vs. Precio (Top 200)"
-            )
-
-            sns.set_theme(style="whitegrid")
-            fig, ax = plt.subplots(figsize=(10, 5))
-
-            sns.scatterplot(
-                data=df_filtrado.head(200),
-                x="surface_total_in_m2",
-                y="price_aprox_usd",
-                hue="property_type",
-                alpha=0.8,
-                s=70,
-                palette="viridis",
-                ax=ax,
-            )
-
-            ax.set_xlabel("Superficie Total (m²)")
-            ax.set_ylabel("Precio (USD)")
-            ax.yaxis.set_major_formatter(
-                ticker.FuncFormatter(lambda x, p: f"${x:,.0f}")
-            )
-
-            ax.legend(
-                title="Tipo de Propiedad",
-                bbox_to_anchor=(1.05, 1),
-                loc="upper left",
-            )
-
-            st.pyplot(fig)
-    else:
-        st.warning(
-            "No se encontraron propiedades con esos criterios."
-        )
-
-except requests.exceptions.RequestException as error:
-    st.error(f"No se pudo conectar con n8n: {error}")
-except (ValueError, TypeError) as error:
-    st.error(f"No se pudo interpretar la respuesta de n8n: {error}")
+                st.pyplot(fig)
 
         else:
             st.warning(
-                "💡 No se encontraron propiedades con esa combinación exacta. ¡Probá"
-                " relajando alguna condición en el menú izquierdo!"
-            )
+                "
+```
