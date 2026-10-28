@@ -68,94 +68,125 @@ barrio = st.sidebar.text_input("4. ¿Algún barrio o zona específica? (Opcional
 excluir = st.sidebar.text_input("5. ¿Querés excluir alguna zona? (Opcional)")
 
 # 4. Botón de Búsqueda y Lógica
+
 if st.sidebar.button("Buscar Propiedades 🚀"):
-  df_filtrado = df_limpio.copy()
+url_n8n = "https://nancyriquelme.app.n8n.cloud/webhook-test/buscar-propiedades"
 
-  if "Departamento" in opcion_tipo:
-    df_filtrado = df_filtrado[
-        df_filtrado["property_type"].str.contains(
-            "apartment", case=False, na=False
+```
+parametros = {
+    "Tipo": opcion_tipo,
+    "presupuesto": presupuesto,
+    "Ambientes": ambientes,
+    "barrio": barrio,
+    "excluir": excluir,
+}
+
+try:
+    with st.spinner("Buscando propiedades con n8n..."):
+        respuesta = requests.post(
+            url_n8n,
+            json=parametros,
+            timeout=120,
         )
-    ]
-  elif "Casa" in opcion_tipo:
-    df_filtrado = df_filtrado[
-        df_filtrado["property_type"].str.contains("house", case=False, na=False)
-    ]
-  elif "PH" in opcion_tipo:
-    df_filtrado = df_filtrado[
-        df_filtrado["property_type"].str.contains("PH", case=False, na=False)
-    ]
+        respuesta.raise_for_status()
+        datos = respuesta.json()
 
-  if presupuesto > 0:
-    df_filtrado = df_filtrado[df_filtrado["price_aprox_usd"] <= presupuesto]
+    if isinstance(datos, dict):
+        datos = datos.get("data", datos.get("items", []))
 
-  df_filtrado = df_filtrado[df_filtrado["rooms"] >= ambientes]
+    df_filtrado = pd.DataFrame(datos)
 
-  if barrio:
-    df_filtrado = df_filtrado[
-        df_filtrado["place_with_parent_names"].str.contains(
-            barrio, case=False, na=False
+    st.subheader(
+        f"✅ Propiedades que cumplen con las reglas: {len(df_filtrado)}"
+    )
+
+    if not df_filtrado.empty:
+        columnas = [
+            "property_type",
+            "price_aprox_usd",
+            "surface_total_in_m2",
+            "rooms",
+            "place_with_parent_names",
+        ]
+
+        columnas_disponibles = [
+            columna
+            for columna in columnas
+            if columna in df_filtrado.columns
+        ]
+
+        columnas_orden = [
+            columna
+            for columna in ["surface_total_in_m2", "price_aprox_usd"]
+            if columna in df_filtrado.columns
+        ]
+
+        if columnas_orden:
+            df_filtrado = df_filtrado.sort_values(
+                by=columnas_orden,
+                ascending=False,
+            )
+
+        st.markdown("#### 🏆 Top 5 de opciones recomendadas:")
+
+        vista_top5 = df_filtrado[columnas_disponibles].head(5).copy()
+
+        if "price_aprox_usd" in vista_top5.columns:
+            vista_top5["price_aprox_usd"] = vista_top5[
+                "price_aprox_usd"
+            ].apply(
+                lambda x: f"USD {float(x):,.0f}"
+                if pd.notna(x)
+                else "Sin precio"
+            )
+
+        st.dataframe(vista_top5, use_container_width=True)
+
+        if {
+            "surface_total_in_m2",
+            "price_aprox_usd",
+            "property_type",
+        }.issubset(df_filtrado.columns):
+            st.markdown(
+                "#### 📊 Relación Superficie vs. Precio (Top 200)"
+            )
+
+            sns.set_theme(style="whitegrid")
+            fig, ax = plt.subplots(figsize=(10, 5))
+
+            sns.scatterplot(
+                data=df_filtrado.head(200),
+                x="surface_total_in_m2",
+                y="price_aprox_usd",
+                hue="property_type",
+                alpha=0.8,
+                s=70,
+                palette="viridis",
+                ax=ax,
+            )
+
+            ax.set_xlabel("Superficie Total (m²)")
+            ax.set_ylabel("Precio (USD)")
+            ax.yaxis.set_major_formatter(
+                ticker.FuncFormatter(lambda x, p: f"${x:,.0f}")
+            )
+
+            ax.legend(
+                title="Tipo de Propiedad",
+                bbox_to_anchor=(1.05, 1),
+                loc="upper left",
+            )
+
+            st.pyplot(fig)
+
+    else:
+        st.warning(
+            "No se encontraron propiedades con esos criterios."
         )
-    ]
 
-  if excluir:
-    df_filtrado = df_filtrado[
-        ~df_filtrado["place_with_parent_names"].str.contains(
-            excluir, case=False, na=False
-        )
-    ]
+except requests.exceptions.RequestException as error:
+    st.error(f"No se pudo conectar con n8n: {error}")
 
-  st.subheader(
-      f"✅ Propiedades que cumplen con las reglas: {len(df_filtrado)}"
-  )
-
-  if len(df_filtrado) > 0:
-    df_filtrado = df_filtrado.sort_values(
-        by=["surface_total_in_m2", "price_aprox_usd"], ascending=False
-    )
-
-    st.markdown("#### 🏆 Top 5 de opciones recomendadas:")
-    columnas = [
-        "property_type",
-        "price_aprox_usd",
-        "surface_total_in_m2",
-        "rooms",
-        "place_with_parent_names",
-    ]
-    vista_top5 = df_filtrado[columnas].head(5).copy()
-    vista_top5["price_aprox_usd"] = vista_top5["price_aprox_usd"].apply(
-        lambda x: f"USD {x:,.0f}"
-    )
-
-    st.dataframe(vista_top5, use_container_width=True)
-
-    st.markdown("#### 📊 Relación Superficie vs. Precio (Top 200)")
-
-    sns.set_theme(style="whitegrid")
-    fig, ax = plt.subplots(figsize=(10, 5))
-
-    sns.scatterplot(
-        data=df_filtrado.head(200),
-        x="surface_total_in_m2",
-        y="price_aprox_usd",
-        hue="property_type",
-        alpha=0.8,
-        s=70,
-        palette="viridis",
-        ax=ax,
-    )
-    ax.set_xlabel("Superficie Total (m²)")
-    ax.set_ylabel("Precio (USD)")
-    ax.yaxis.set_major_formatter(
-        ticker.FuncFormatter(lambda x, p: f"${x:,.0f}")
-    )
-    plt.legend(
-        title="Tipo de Propiedad", bbox_to_anchor=(1.05, 1), loc="upper left"
-    )
-
-    st.pyplot(fig)
-  else:
-    st.warning(
-        "💡 No se encontraron propiedades con esa combinación exacta. ¡Probá"
-        " relajando alguna condición en el menú izquierdo!"
-    )
+except (ValueError, TypeError) as error:
+    st.error(f"No se pudo interpretar la respuesta de n8n: {error}")
+```
