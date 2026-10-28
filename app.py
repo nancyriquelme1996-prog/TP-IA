@@ -187,9 +187,8 @@ except requests.exceptions.RequestException as error:
 except (ValueError, TypeError) as error:
     st.error(f"No se pudo interpretar la respuesta de n8n: {error}")
 
-
-  else:
-    st.warning(
-        "💡 No se encontraron propiedades con esa combinación exacta. ¡Probá"
-        " relajando alguna condición en el menú izquierdo!"
-    )
+        else:
+            st.warning(
+                "💡 No se encontraron propiedades con esa combinación exacta. ¡Probá"
+                " relajando alguna condición en el menú izquierdo!"
+            )
