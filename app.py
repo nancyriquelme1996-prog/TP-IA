@@ -71,7 +71,7 @@ excluir = st.sidebar.text_input("5. ¿Querés excluir alguna zona? (Opcional)")
 # 4. Botón de Búsqueda y Lógica
 
 if st.sidebar.button("Buscar Propiedades 🚀"):
-url_n8n = "https://nancyriquelme.app.n8n.cloud/webhook-test/buscar-propiedades"
+    url_n8n = "https://nancyriquelme.app.n8n.cloud/webhook-test/buscar-propiedades"
 
 ```
 parametros = {
