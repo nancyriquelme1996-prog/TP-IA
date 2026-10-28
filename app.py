@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import streamlit as st
+import requests
 
 # 1. Configuración de la página web
 st.set_page_config(
