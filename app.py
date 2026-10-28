@@ -69,7 +69,6 @@ excluir = st.sidebar.text_input("5. ¿Querés excluir alguna zona? (Opcional)")
 
 # 4. Botón de Búsqueda y Lógica
 ```python
-# 4. Botón de Búsqueda y Lógica
 if st.sidebar.button("Buscar Propiedades 🚀"):
     url_n8n = "https://nancyriquelme.app.n8n.cloud/webhook-test/buscar-propiedades"
 
@@ -97,10 +96,12 @@ if st.sidebar.button("Buscar Propiedades 🚀"):
         df_filtrado = pd.DataFrame(datos)
 
         st.subheader(
-            f"✅ Propiedades que cumplen con las reglas: {len(df_filtrado)}"
+            f"Propiedades encontradas: {len(df_filtrado)}"
         )
 
-        if not df_filtrado.empty:
+        if df_filtrado.empty:
+            st.warning("No se encontraron propiedades con esos criterios.")
+        else:
             columnas = [
                 "property_type",
                 "price_aprox_usd",
@@ -117,10 +118,7 @@ if st.sidebar.button("Buscar Propiedades 🚀"):
 
             columnas_orden = [
                 columna
-                for columna in [
-                    "surface_total_in_m2",
-                    "price_aprox_usd",
-                ]
+                for columna in ["surface_total_in_m2", "price_aprox_usd"]
                 if columna in df_filtrado.columns
             ]
 
@@ -130,7 +128,7 @@ if st.sidebar.button("Buscar Propiedades 🚀"):
                     ascending=False,
                 )
 
-            st.markdown("#### 🏆 Top 5 de opciones recomendadas:")
+            st.markdown("### Top 5 de propiedades recomendadas")
 
             vista_top5 = df_filtrado[columnas_disponibles].head(5).copy()
 
@@ -150,9 +148,7 @@ if st.sidebar.button("Buscar Propiedades 🚀"):
                 "price_aprox_usd",
                 "property_type",
             }.issubset(df_filtrado.columns):
-                st.markdown(
-                    "#### 📊 Relación Superficie vs. Precio (Top 200)"
-                )
+                st.markdown("### Relación entre superficie y precio")
 
                 sns.set_theme(style="whitegrid")
                 fig, ax = plt.subplots(figsize=(10, 5))
@@ -168,21 +164,17 @@ if st.sidebar.button("Buscar Propiedades 🚀"):
                     ax=ax,
                 )
 
-                ax.set_xlabel("Superficie Total (m²)")
+                ax.set_xlabel("Superficie total (m²)")
                 ax.set_ylabel("Precio (USD)")
                 ax.yaxis.set_major_formatter(
                     ticker.FuncFormatter(lambda x, p: f"${x:,.0f}")
                 )
 
-                ax.legend(
-                    title="Tipo de Propiedad",
-                    bbox_to_anchor=(1.05, 1),
-                    loc="upper left",
-                )
-
                 st.pyplot(fig)
 
-        else:
-            st.warning(
-                "
+    except requests.exceptions.RequestException as error:
+        st.error(f"No se pudo conectar con n8n: {error}")
+
+    except (ValueError, TypeError) as error:
+        st.error(f"No se pudo interpretar la respuesta de n8n: {error}")
 ```
